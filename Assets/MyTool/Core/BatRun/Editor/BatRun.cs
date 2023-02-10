@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using Sirenix.OdinInspector;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 namespace MhyTool
@@ -46,15 +48,60 @@ namespace MhyTool
                 System.Diagnostics.Process proc = null;
                 try
                 {
+                    List<DataReceivedEventArgs> log = new List<DataReceivedEventArgs>();
+                    List<DataReceivedEventArgs> error = new List<DataReceivedEventArgs>();
                     proc = new System.Diagnostics.Process();
-                    proc.StartInfo.WorkingDirectory = workingDir;
-                    proc.StartInfo.FileName = batFile;
+                    // proc.StartInfo.WorkingDirectory = workingDir;
+                    proc.StartInfo.FileName =Path.Join(workingDir,batFile);
+                    proc.StartInfo.UseShellExecute = false;
+                    proc.StartInfo.RedirectStandardOutput = true;
+                    proc.StartInfo.RedirectStandardError = true;
                     //proc.StartInfo.Arguments = args;
-                    //proc.StartInfo.CreateNoWindow = true;
+                    proc.StartInfo.CreateNoWindow = true;
                     //proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;//disable dos window
+
+
                     proc.Start();
+                    proc.BeginOutputReadLine();
+                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            UnityEngine.Debug.Log(e.Data);
+                            log.Add(e);
+                        }
+                    });
+                    proc.BeginErrorReadLine();
+                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            UnityEngine.Debug.Log(e.Data);
+                            error.Add(e);
+                        }
+                    });
+                    Console.ReadLine();
                     proc.WaitForExit();
                     proc.Close();
+                    var conflict = log.FindAll(item => item.Data.ToLower().StartsWith("c ")).Select(item=>item.Data).ToList();
+                    foreach (var msg in conflict)
+                        UnityEngine.Debug.LogError(msg);
+                    conflict = conflict.Select(item => item.Substring(1).Trim()).ToList();
+                    HashSet<string> svnRoots = new HashSet<string>();
+                    foreach (var file in conflict)
+                    {
+                        var curRoot = Path.GetDirectoryName(file);
+                        while (!Directory.Exists(Path.Join(curRoot,".svn")))
+                        {
+                            curRoot = Path.GetDirectoryName(curRoot);
+                        }
+
+                        if (!svnRoots.Contains(curRoot))
+                            svnRoots.Add(curRoot);
+                    }
+                    EditorUtility.DisplayDialog("Conflict", $"以下目录存在冲突", "OK");
+                    foreach (var root in svnRoots)
+                        Process.Start("explorer.exe", root);
                 }
                 catch (System.Exception ex)
                 {

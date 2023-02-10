@@ -9,7 +9,6 @@ namespace MhyTool
 {
     public class Utils
     {
-        
         public static string FormatPath(string path)
         {
             path = path.Replace("/", "\\");
