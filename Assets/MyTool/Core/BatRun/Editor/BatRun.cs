@@ -24,65 +24,17 @@ namespace MhyTool
             {
                 if (set.batPaths != null)
                 {
+                    List<DataReceivedEventArgs> log = new List<DataReceivedEventArgs>();
+                    List<DataReceivedEventArgs> error = new List<DataReceivedEventArgs>();
                     foreach (var path in set.batPaths)
                     {
                         var name = Path.GetFileName(path);
                         var dir = Path.GetDirectoryName(path);
                         if (Path.GetFileName(name).ToLower().Contains("svnup"))
                         {
-                            RunBat(name, dir);
+                            RunBat(name, dir, ref log, ref error);
                         }
                     }
-                }
-            }
-        }
-        private static void RunBat(string batFile, string workingDir)
-        {
-            var path = Utils.FormatPath(Path.Join(workingDir,batFile));
-            if (!System.IO.File.Exists(path))
-            {
-                Debug.LogError($"bat文件不存在：{path}");
-            }
-            else
-            {
-                System.Diagnostics.Process proc = null;
-                try
-                {
-                    List<DataReceivedEventArgs> log = new List<DataReceivedEventArgs>();
-                    List<DataReceivedEventArgs> error = new List<DataReceivedEventArgs>();
-                    proc = new System.Diagnostics.Process();
-                    // proc.StartInfo.WorkingDirectory = workingDir;
-                    proc.StartInfo.FileName =Path.Join(workingDir,batFile);
-                    proc.StartInfo.UseShellExecute = false;
-                    proc.StartInfo.RedirectStandardOutput = true;
-                    proc.StartInfo.RedirectStandardError = true;
-                    //proc.StartInfo.Arguments = args;
-                    proc.StartInfo.CreateNoWindow = true;
-                    //proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;//disable dos window
-
-
-                    proc.Start();
-                    proc.BeginOutputReadLine();
-                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
-                    {
-                        if (!string.IsNullOrEmpty(e.Data))
-                        {
-                            UnityEngine.Debug.Log(e.Data);
-                            log.Add(e);
-                        }
-                    });
-                    proc.BeginErrorReadLine();
-                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) =>
-                    {
-                        if (!string.IsNullOrEmpty(e.Data))
-                        {
-                            UnityEngine.Debug.Log(e.Data);
-                            error.Add(e);
-                        }
-                    });
-                    Console.ReadLine();
-                    proc.WaitForExit();
-                    proc.Close();
                     var conflict = log.FindAll(item => item.Data.ToLower().StartsWith("c ")).Select(item=>item.Data).ToList();
                     foreach (var msg in conflict)
                         UnityEngine.Debug.LogError(msg);
@@ -106,6 +58,56 @@ namespace MhyTool
                         foreach (var root in svnRoots)
                             Process.Start("explorer.exe", root);
                     }
+                }
+            }
+        }
+        private static void RunBat(string batFile, string workingDir, ref List<DataReceivedEventArgs> log,  ref List<DataReceivedEventArgs> error)
+        {
+            var path = Utils.FormatPath(Path.Join(workingDir,batFile));
+            if (!System.IO.File.Exists(path))
+            {
+                Debug.LogError($"bat文件不存在：{path}");
+            }
+            else
+            {
+                System.Diagnostics.Process proc = null;
+                try
+                {
+                    proc = new System.Diagnostics.Process();
+                    // proc.StartInfo.WorkingDirectory = workingDir;
+                    proc.StartInfo.FileName =Path.Join(workingDir,batFile);
+                    proc.StartInfo.UseShellExecute = false;
+                    proc.StartInfo.RedirectStandardOutput = true;
+                    proc.StartInfo.RedirectStandardError = true;
+                    //proc.StartInfo.Arguments = args;
+                    proc.StartInfo.CreateNoWindow = true;
+                    //proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;//disable dos window
+
+
+                    proc.Start();
+                    proc.BeginOutputReadLine();
+                    var list = log;
+                    proc.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            UnityEngine.Debug.Log(e.Data);
+                            list.Add(e);
+                        }
+                    });
+                    proc.BeginErrorReadLine();
+                    var argsList = error;
+                    proc.ErrorDataReceived += new DataReceivedEventHandler((sender, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            UnityEngine.Debug.Log(e.Data);
+                            argsList.Add(e);
+                        }
+                    });
+                    Console.ReadLine();
+                    proc.WaitForExit();
+                    proc.Close();
                 }
                 catch (System.Exception ex)
                 {
