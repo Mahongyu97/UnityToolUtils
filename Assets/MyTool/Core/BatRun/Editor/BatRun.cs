@@ -99,9 +99,13 @@ namespace MhyTool
                         if (!svnRoots.Contains(curRoot))
                             svnRoots.Add(curRoot);
                     }
-                    EditorUtility.DisplayDialog("Conflict", $"以下目录存在冲突", "OK");
-                    foreach (var root in svnRoots)
-                        Process.Start("explorer.exe", root);
+
+                    if (svnRoots.Count > 0)
+                    {
+                        EditorUtility.DisplayDialog("Conflict", $"以下目录存在冲突", "OK");
+                        foreach (var root in svnRoots)
+                            Process.Start("explorer.exe", root);
+                    }
                 }
                 catch (System.Exception ex)
                 {
