@@ -35,6 +35,7 @@ namespace MhyTool
                             RunBat(name, dir, ref log, ref error);
                         }
                     }
+
                     var conflict = log.FindAll(item => item.Data.ToLower().StartsWith("c ")).Select(item=>item.Data).ToList();
                     foreach (var msg in conflict)
                         UnityEngine.Debug.LogError(msg);
@@ -42,14 +43,17 @@ namespace MhyTool
                     HashSet<string> svnRoots = new HashSet<string>();
                     foreach (var file in conflict)
                     {
-                        var curRoot = Path.GetDirectoryName(file);
-                        while (!Directory.Exists(Path.Join(curRoot,".svn")))
+                        if (File.Exists(file))
                         {
-                            curRoot = Path.GetDirectoryName(curRoot);
-                        }
+                            var curRoot = Path.GetDirectoryName(file);
+                            while (!Directory.Exists(Path.Join(curRoot,".svn")))
+                            {
+                                curRoot = Path.GetDirectoryName(curRoot);
+                            }
 
-                        if (!svnRoots.Contains(curRoot))
-                            svnRoots.Add(curRoot);
+                            if (!svnRoots.Contains(curRoot))
+                                svnRoots.Add(curRoot);
+                        }
                     }
 
                     if (svnRoots.Count > 0)
